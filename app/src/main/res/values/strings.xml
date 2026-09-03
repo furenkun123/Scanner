@@ -1,0 +1,34 @@
+<resources>
+    <!-- 应用与主页布局相关 -->
+    <string name="app_name">极简扫描</string>
+    <string name="title_scan_history">扫码历史</string>
+    <string name="tab_scan">扫码</string>
+    <string name="tab_ocr">OCR</string>
+    <string name="desc_ocr_capture">拍照识别</string>
+    <string name="desc_history">历史记录</string>
+    <string name="desc_gallery">相册</string>
+    <string name="desc_flash">闪光灯</string>
+    <string name="desc_back">返回</string>
+    <string name="msg_copied">已复制内容到剪贴板</string>
+
+    <!-- 扫码结果弹窗文案 -->
+    <string name="dialog_title_result">扫描结果</string>
+    <string name="dialog_btn_copy">复制内容</string>
+
+    <!-- OCR 识别弹窗文案 -->
+    <string name="ocr_title_original">识别文本</string>
+    <string name="ocr_title_translated">译文 (中文)</string>
+    <string name="ocr_btn_copy">复制文本</string>
+    <string name="ocr_btn_translate">翻译</string>
+
+    <!-- 历史记录页面与对话框 -->
+    <string name="history_item_format">%1$s\n%2$s</string>
+    <string name="desc_clear_history">清空历史</string>
+    <string name="dialog_clear_title">确认清空</string>
+    <string name="dialog_clear_msg">确定要清空所有扫码历史记录吗？</string>
+    <string name="action_confirm">确定</string>
+    <string name="action_cancel">取消</string>
+    <string name="msg_history_cleared">历史记录已清空</string>
+
+    <string name="tile_scanner_name">极简扫描</string>
+</resources>
