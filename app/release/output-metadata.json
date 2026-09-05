@@ -12,8 +12,8 @@
       "filters": [],
       "attributes": [],
       "versionCode": 1,
-      "versionName": "1.0",
-      "outputFile": "Scanner_v1.0_release_20260903.apk"
+      "versionName": "0.2",
+      "outputFile": "ScannerLite_v0.2_release.apk"
     }
   ],
   "elementType": "File",
@@ -22,14 +22,14 @@
       "minApi": 28,
       "maxApi": 30,
       "baselineProfiles": [
-        "baselineProfiles/1/Scanner_v1.0_release_20260903.dm"
+        "baselineProfiles/1/ScannerLite_v0.2_release.dm"
       ]
     },
     {
       "minApi": 31,
       "maxApi": 2147483647,
       "baselineProfiles": [
-        "baselineProfiles/0/Scanner_v1.0_release_20260903.dm"
+        "baselineProfiles/0/ScannerLite_v0.2_release.dm"
       ]
     }
   ],

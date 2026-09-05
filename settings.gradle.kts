@@ -22,6 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Scanner"
+rootProject.name = "ScannerLite"
 include(":app")
  
