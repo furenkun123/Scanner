@@ -29,6 +29,28 @@
             android:visibility="invisible" />
     </FrameLayout>
 
+    <!-- 左上角设置按钮 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSettings"
+        style="@style/Widget.Material3.Button.IconButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="48dp"
+        android:layout_marginStart="20dp"
+        android:backgroundTint="#33000000"
+        android:contentDescription="@string/desc_settings"
+        android:insetLeft="0dp"
+        android:insetTop="0dp"
+        android:insetRight="0dp"
+        android:insetBottom="0dp"
+        app:icon="@drawable/ic_settings"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:iconTint="#FFFFFF"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
     <!-- 右上角闪光灯按钮 -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnFlash"

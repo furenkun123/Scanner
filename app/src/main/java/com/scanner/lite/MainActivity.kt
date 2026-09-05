@@ -6,6 +6,7 @@ import android.animation.ValueAnimator
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.ImageDecoder
 import android.graphics.Typeface
@@ -13,6 +14,9 @@ import android.media.AudioAttributes
 import android.media.SoundPool
 import android.net.Uri
 import android.os.Bundle
+import android.text.method.LinkMovementMethod
+import android.text.util.Linkify
+import android.util.Patterns
 import android.view.HapticFeedbackConstants
 import android.view.ScaleGestureDetector
 import android.view.View
@@ -36,11 +40,14 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -58,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnFlash: MaterialButton
     private lateinit var btnGallery: MaterialButton
     private lateinit var btnHistory: MaterialButton
+    private var btnSettings: MaterialButton? = null
     private lateinit var btnCapture: FloatingActionButton
     private lateinit var btnTabScan: TextView
     private lateinit var btnTabOcr: TextView
@@ -69,11 +77,15 @@ class MainActivity : AppCompatActivity() {
     private var imageCapture: ImageCapture? = null
     private lateinit var cameraExecutor: ExecutorService
 
-    // 状态标记
+    // 状态与配置标记
     private var isFlashOn = false
     private var isScanningEnabled = true
     private var isOcrMode = false // false: 扫码, true: OCR
     private var scanAnimator: ObjectAnimator? = null
+
+    private lateinit var prefs: SharedPreferences
+    private var isScanDialogEnabled = true
+    private var isOcrUrlEnabled = true
 
     // 全局持有弹窗引用，防止 WindowLeaked 内存泄漏
     private var currentDialog: BottomSheetDialog? = null
@@ -103,6 +115,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        initSettings()
         initViews()
         initSoundPool()
         initListeners()
@@ -118,6 +131,12 @@ class MainActivity : AppCompatActivity() {
                 this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
             )
         }
+    }
+
+    private fun initSettings() {
+        prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        isScanDialogEnabled = prefs.getBoolean("key_scan_dialog", true)
+        isOcrUrlEnabled = prefs.getBoolean("key_ocr_url", true)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -138,6 +157,7 @@ class MainActivity : AppCompatActivity() {
         btnFlash = findViewById(R.id.btnFlash)
         btnHistory = findViewById(R.id.btnHistory)
         btnGallery = findViewById(R.id.btnGallery)
+        btnSettings = findViewById(R.id.btnSettings)
         btnCapture = findViewById(R.id.btnCapture)
 
         previewView = findViewById(R.id.previewView)
@@ -155,8 +175,12 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ScanHistoryActivity::class.java))
         }
 
+        btnSettings?.setOnClickListener {
+            showSettingsBottomSheet()
+        }
+
         setupFlashButton()
-        setupZoomGesture() // 🌟 新增：配置手势变焦
+        setupZoomGesture()
 
         btnGallery.setOnClickListener {
             selectImageLauncher.launch("image/*")
@@ -175,7 +199,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 🌟 新增：手势捏合变焦逻辑
     private fun setupZoomGesture() {
         val scaleGestureDetector = ScaleGestureDetector(
             this,
@@ -185,7 +208,6 @@ class MainActivity : AppCompatActivity() {
                     val currentZoomRatio = activeCamera.cameraInfo.zoomState.value?.zoomRatio ?: 1f
                     val delta = detector.scaleFactor
 
-                    // 动态更新 CameraX 变焦比率
                     activeCamera.cameraControl.setZoomRatio(currentZoomRatio * delta)
                     return true
                 }
@@ -401,7 +423,31 @@ class MainActivity : AppCompatActivity() {
             dao.insert(ScanRecord(content = result))
         }
 
-        runOnUiThread { showResultBottomSheet(result) }
+        runOnUiThread {
+            val matcher = Patterns.WEB_URL.matcher(result)
+            val isUrl = matcher.find()
+
+            if (isUrl) {
+                val foundUrl = matcher.group() ?: result
+                val urlToOpen = if (!foundUrl.startsWith("http://") && !foundUrl.startsWith("https://")) {
+                    "https://$foundUrl"
+                } else {
+                    foundUrl
+                }
+                showUrlBottomSheet(urlToOpen)
+            } else if (isScanDialogEnabled) {
+                showResultBottomSheet(result)
+            } else {
+                copyToClipboard(result)
+                Toast.makeText(this, "已自动复制结果", Toast.LENGTH_SHORT).show()
+                previewView.postDelayed({
+                    if (!isOcrMode) {
+                        isScanningEnabled = true
+                        resumeScanAnimation()
+                    }
+                }, 1500)
+            }
+        }
     }
 
     private fun showResultBottomSheet(text: String) {
@@ -436,6 +482,48 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun showUrlBottomSheet(urlToOpen: String) {
+        currentDialog?.dismiss()
+        val dialog = BottomSheetDialog(this)
+        currentDialog = dialog
+
+        val rootView = findViewById<ViewGroup>(android.R.id.content)
+        val view = layoutInflater.inflate(R.layout.dialog_url_prompt, rootView, false)
+
+        val tvUrlContent = view.findViewById<TextView>(R.id.tvUrlContent)
+        val btnOpenUrl = view.findViewById<Button>(R.id.btnOpenUrl)
+        val btnCancelUrl = view.findViewById<Button>(R.id.btnCancelUrl)
+
+        tvUrlContent.text = urlToOpen
+
+        btnOpenUrl.setOnClickListener {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, urlToOpen.toUri())
+                startActivity(intent)
+            } catch (_: Exception) {
+                Toast.makeText(this, "无法打开该链接", Toast.LENGTH_SHORT).show()
+            }
+            dialog.dismiss()
+        }
+
+        btnCancelUrl.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.setOnDismissListener {
+            if (!isOcrMode) {
+                isScanningEnabled = true
+                resumeScanAnimation()
+            }
+            currentDialog = null
+        }
+
+        dialog.setContentView(view)
+        dialog.window?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            ?.setBackgroundResource(android.R.color.transparent)
+        dialog.show()
+    }
+
     private fun showOcrResultBottomSheet(rawText: String) {
         currentDialog?.dismiss()
         val dialog = BottomSheetDialog(this)
@@ -451,6 +539,12 @@ class MainActivity : AppCompatActivity() {
         val btnStartTranslate = view.findViewById<Button>(R.id.btnStartTranslate)
 
         tvOcrOriginal.text = rawText
+
+        // 1. 开启 OCR 文本中的网址高亮与直接点击支持（在识别全文里可直接点击网址）
+        if (isOcrUrlEnabled) {
+            Linkify.addLinks(tvOcrOriginal, Linkify.WEB_URLS)
+            tvOcrOriginal.movementMethod = LinkMovementMethod.getInstance()
+        }
 
         btnCopyOriginal.setOnClickListener {
             copyToClipboard(rawText)
@@ -494,6 +588,90 @@ class MainActivity : AppCompatActivity() {
         }
 
         dialog.setCanceledOnTouchOutside(true)
+        dialog.show()
+
+        // 2. 独立提示对话框，不会冲掉底部的 OCR 识别文本
+        if (isOcrUrlEnabled) {
+            checkAndPromptUrl(rawText)
+        }
+    }
+
+    private fun showSettingsBottomSheet() {
+        currentDialog?.dismiss()
+        val dialog = BottomSheetDialog(this)
+        currentDialog = dialog
+
+        val rootView = findViewById<ViewGroup>(android.R.id.content)
+        val view = layoutInflater.inflate(R.layout.dialog_settings, rootView, false)
+
+        val switchScanDialog = view.findViewById<MaterialSwitch>(R.id.switchScanDialog)
+        val switchOcrUrl = view.findViewById<MaterialSwitch>(R.id.switchOcrUrl)
+
+        switchScanDialog?.isChecked = isScanDialogEnabled
+        switchOcrUrl?.isChecked = isOcrUrlEnabled
+
+        switchScanDialog?.setOnCheckedChangeListener { _, isChecked ->
+            isScanDialogEnabled = isChecked
+            prefs.edit { putBoolean("key_scan_dialog", isChecked) }
+        }
+
+        switchOcrUrl?.setOnCheckedChangeListener { _, isChecked ->
+            isOcrUrlEnabled = isChecked
+            prefs.edit { putBoolean("key_ocr_url", isChecked) }
+        }
+
+        dialog.setOnDismissListener {
+            currentDialog = null
+        }
+
+        dialog.setContentView(view)
+        dialog.window?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            ?.setBackgroundResource(android.R.color.transparent)
+        dialog.show()
+    }
+
+    private fun checkAndPromptUrl(text: String) {
+        val matcher = Patterns.WEB_URL.matcher(text)
+        if (!matcher.find()) return
+
+        val rawUrl = matcher.group() ?: return
+        val urlToOpen = if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+            "https://$rawUrl"
+        } else {
+            rawUrl
+        }
+
+        // 使用现有的 dialog_url_prompt 布局从底部弹出
+        val dialog = BottomSheetDialog(this)
+        val rootView = findViewById<ViewGroup>(android.R.id.content)
+        val view = layoutInflater.inflate(R.layout.dialog_url_prompt, rootView, false)
+
+        val tvUrlContent = view.findViewById<TextView>(R.id.tvUrlContent)
+        val btnOpenUrl = view.findViewById<Button>(R.id.btnOpenUrl)
+        val btnCancelUrl = view.findViewById<Button>(R.id.btnCancelUrl)
+
+        tvUrlContent.text = urlToOpen
+
+        btnOpenUrl.setOnClickListener {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, urlToOpen.toUri())
+                startActivity(intent)
+            } catch (_: Exception) {
+                Toast.makeText(this, "无法打开该链接，未找到合适应用", Toast.LENGTH_SHORT).show()
+            }
+            dialog.dismiss()
+        }
+
+        btnCancelUrl.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.setContentView(view)
+
+        // 背景透明化处理（适配圆角 Layout）
+        dialog.window?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            ?.setBackgroundResource(android.R.color.transparent)
+
         dialog.show()
     }
 

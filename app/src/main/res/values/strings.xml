@@ -10,10 +10,20 @@
     <string name="desc_flash">闪光灯</string>
     <string name="desc_back">返回</string>
     <string name="msg_copied">已复制内容到剪贴板</string>
+    <string name="desc_settings">设置</string>
+    <string name="title_settings">设置</string>
+    <string name="setting_scan_dialog_title">扫码识别结果弹窗</string>
+    <string name="setting_scan_dialog_desc">关闭后自动复制结果，不弹窗阻断扫码</string>
+    <string name="setting_ocr_url_title">OCR 识别网址检测</string>
+    <string name="setting_ocr_url_desc">开启后当文本包含 URL 时提示跳转</string>
 
     <!-- 扫码结果弹窗文案 -->
     <string name="dialog_title_result">扫描结果</string>
     <string name="dialog_btn_copy">复制内容</string>
+    <string name="action_copy">复制链接</string>
+    <string name="action_open_browser">打开浏览器</string>
+    <string name="title_url_detected">检测到网址</string>
+    <string name="action_cancel">取消</string>
 
     <!-- OCR 识别弹窗文案 -->
     <string name="ocr_title_original">识别文本</string>
@@ -27,8 +37,8 @@
     <string name="dialog_clear_title">确认清空</string>
     <string name="dialog_clear_msg">确定要清空所有扫码历史记录吗？</string>
     <string name="action_confirm">确定</string>
-    <string name="action_cancel">取消</string>
     <string name="msg_history_cleared">历史记录已清空</string>
+    <string name="msg_no_history">暂无历史记录</string>
 
     <string name="tile_scanner_name">极简扫描</string>
 </resources>
