@@ -57,7 +57,7 @@ android {
 @Suppress("UnstableApiUsage")
 androidComponents {
     onVariants { variant ->
-        val appName = "Scanner"
+        val appName = "ScannerLite"
         val versionName = android.defaultConfig.versionName ?: "1.0"
         val buildType = variant.buildType ?: "release"
 
