@@ -17,7 +17,7 @@ android {
         minSdk = 31
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.2"
 
 
         ndk {
@@ -59,11 +59,10 @@ androidComponents {
     onVariants { variant ->
         val appName = "Scanner"
         val versionName = android.defaultConfig.versionName ?: "1.0"
-        val date = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
         val buildType = variant.buildType ?: "release"
 
         variant.outputs.forEach { output ->
-            output.outputFileName.set("${appName}_v${versionName}_${buildType}_${date}.apk")
+            output.outputFileName.set("${appName}_v${versionName}_${buildType}.apk")
         }
     }
 }
